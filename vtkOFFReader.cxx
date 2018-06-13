@@ -25,6 +25,8 @@
 
 #include <sstream>
 #include <fstream>
+#include <limits>
+#include <cmath>
 
 vtkStandardNewMacro(vtkOFFReader);
 
@@ -131,6 +133,10 @@ int vtkOFFReader::RequestData(
   //Now we can start to read the vertices
   unsigned int VertexCounter = 0;
 
+  float nan = std::numeric_limits<float>::quiet_NaN();
+  float vertex[3] = {nan, nan, nan};
+  unsigned int vertexCoord = 0;
+  
   while(getline(in, line) && VertexCounter < NumberOfVertices)
   {
     if(line.size() == 0) //skip blank lines (they should only occur before the vertices start)
@@ -138,11 +144,23 @@ int vtkOFFReader::RequestData(
 
     std::stringstream ssVertex;
     ssVertex << line;
-    float x,y,z;
-    ssVertex >> x >> y >> z;
-    points->InsertNextPoint(x, y, z);
-    //std::cout << "adding vertex: " << x << " " << y << " " << z << std::endl;
-    VertexCounter++;
+    while (VertexCounter < NumberOfVertices) {
+      ssVertex >> vertex[vertexCoord];
+      if (std::isnan(vertex[vertexCoord])) {
+        break;
+      }
+      ++vertexCoord;
+      
+      if (vertexCoord == 3) {
+        vertexCoord = 0;
+        points->InsertNextPoint(vertex[0], vertex[1], vertex[2]);
+        //std::cout << "adding vertex: " << vertex[0] << " " << vertex[1] << " " << vertex[2] << std::endl;
+        for (unsigned int i = 0; i < 3; ++i) {
+          vertex[i] = nan;
+        }
+        VertexCounter++;
+      }       
+    }
   } // (end of vertex while loop)
 
   unsigned int FaceCounter = 0;
